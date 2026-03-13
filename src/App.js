@@ -4,25 +4,34 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from '@studio-freight/lenis';
 
+// Register ScrollTrigger with GSAP
+gsap.registerPlugin(ScrollTrigger);
+
 const App = () => {
   const canvasRef = useRef(null);
   const heroTitleRef = useRef(null);
   const marqueeRef = useRef(null);
 
   useEffect(() => {
-    const initApp = async () => {
+    const initApp = () => {
       try {
-        gsap.registerPlugin(ScrollTrigger);
-
         // --- LENIS SMOOTH SCROLL ---
-        const lenis = new Lenis();
-        lenis.on('scroll', ScrollTrigger.update);
-        
+        const lenis = new Lenis({
+          duration: 1.2,
+          easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+          orientation: 'vertical',
+          smoothWheel: true,
+        });
+
         function raf(time) {
           lenis.raf(time);
           requestAnimationFrame(raf);
         }
         requestAnimationFrame(raf);
+
+        lenis.on('scroll', () => {
+          ScrollTrigger.update();
+        });
 
         // --- THREE.JS SCENE ---
         const scene = new THREE.Scene();
@@ -30,7 +39,10 @@ const App = () => {
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        if (canvasRef.current) canvasRef.current.appendChild(renderer.domElement);
+        if (canvasRef.current) {
+          canvasRef.current.innerHTML = ''; // Clear any existing canvas
+          canvasRef.current.appendChild(renderer.domElement);
+        }
 
         const geometry = new THREE.PlaneGeometry(120, 120, 100, 100);
         const material = new THREE.MeshBasicMaterial({
@@ -62,42 +74,52 @@ const App = () => {
         // Hero Entrance
         if (heroTitleRef.current) {
           const titleText = heroTitleRef.current.innerText;
-          heroTitleRef.current.innerHTML = titleText.split('').map(char => `<span>${char}</span>`).join('');
+          heroTitleRef.current.innerHTML = titleText.split('').map(char => `<span style="display: inline-block; transform: translateY(110%);">${char}</span>`).join('');
         }
 
         const tl = gsap.timeline();
         tl.to('#hero-top', { opacity: 1, duration: 1 })
           .to('#hero-title span', { y: 0, stagger: 0.1, duration: 1.5, ease: "expo.out" }, "-=0.5")
           .from('#hero-sub', { opacity: 0, y: 10, duration: 1 }, "-=1")
-          .from('#scroll-line', { scaleY: 0, duration: 1 }, "-=0.5");
+          .from('#scroll-line', { scaleY: 0, duration: 1, transformOrigin: "top" }, "-=0.5");
 
         // Carousel Logic
         const words = document.querySelectorAll('.carousel-word');
-        words.forEach(word => {
-          const text = word.getAttribute('data-word');
-          word.innerHTML = text.split('').map(char => `<span class="char">${char === ' ' ? '&nbsp;' : char}</span>`).join('');
-        });
+        if (words.length > 0) {
+          words.forEach(word => {
+            const text = word.getAttribute('data-word');
+            word.innerHTML = text.split('').map(char => `<span class="char" style="display: inline-block; transform: translateY(100%);">${char === ' ' ? '&nbsp;' : char}</span>`).join('');
+          });
 
-        const carouselTl = gsap.timeline({ repeat: -1 });
-        words.forEach((word) => {
-          const chars = word.querySelectorAll('.char');
-          carouselTl
-            .set(word, { opacity: 1 })
-            .to(chars, {
-              y: '0%',
-              stagger: 0.05,
-              duration: 0.8,
-              ease: "expo.out"
-            })
-            .to(chars, {
-              y: '-100%',
-              stagger: 0.03,
-              duration: 0.6,
-              ease: "expo.in",
-              delay: 1.5
-            })
-            .set(word, { opacity: 0 });
-        });
+          const carouselTl = gsap.timeline({ repeat: -1, repeatDelay: 0.5 });
+          
+          words.forEach((word, index) => {
+            const chars = word.querySelectorAll('.char');
+            
+            if (index === 0) {
+              carouselTl.set(word, { opacity: 1 });
+            } else {
+              carouselTl.set(word, { opacity: 0 });
+            }
+            
+            carouselTl
+              .to(chars, {
+                y: '0%',
+                stagger: 0.05,
+                duration: 0.8,
+                ease: "expo.out"
+              })
+              .to(chars, {
+                y: '-100%',
+                stagger: 0.03,
+                duration: 0.6,
+                ease: "expo.in",
+                delay: 1.5
+              })
+              .set(word, { opacity: 0 })
+              .set(word === words[words.length - 1] ? words[0] : words[index + 1], { opacity: 1 }, "+=0.1");
+          });
+        }
 
         // Marquee
         if (marqueeRef.current) {
@@ -114,44 +136,53 @@ const App = () => {
         }
 
         // Project Reveals
-        gsap.utils.toArray('.project-item').forEach(item => {
+        const projectItems = gsap.utils.toArray('.project-item');
+        projectItems.forEach(item => {
           const overlay = item.querySelector('.reveal-overlay');
-          ScrollTrigger.create({
-            trigger: item,
-            start: "top 80%",
-            onEnter: () => {
-              gsap.timeline()
-                .to(overlay, { scaleX: 1, duration: 0.5, ease: "power2.inOut" })
-                .set(overlay, { transformOrigin: "right" })
-                .to(overlay, { scaleX: 0, duration: 0.5, ease: "power2.inOut" });
-            }
-          });
+          if (overlay) {
+            ScrollTrigger.create({
+              trigger: item,
+              start: "top 80%",
+              once: true,
+              onEnter: () => {
+                gsap.timeline()
+                  .to(overlay, { scaleX: 1, duration: 0.5, ease: "power2.inOut" })
+                  .set(overlay, { transformOrigin: "right" })
+                  .to(overlay, { scaleX: 0, duration: 0.5, ease: "power2.inOut" });
+              }
+            });
+          }
         });
 
         // Skills Parallax
-        gsap.utils.toArray('.feature-card-alt').forEach((card) => {
-          gsap.from(card, {
-            x: 100,
-            opacity: 0,
-            duration: 1,
-            scrollTrigger: {
-              trigger: card,
-              start: "top 90%",
-              scrub: 1,
-              end: "top 60%"
+        const cards = gsap.utils.toArray('.feature-card-alt');
+        cards.forEach((card) => {
+          gsap.fromTo(card, 
+            { x: 100, opacity: 0 },
+            {
+              x: 0,
+              opacity: 1,
+              duration: 1,
+              scrollTrigger: {
+                trigger: card,
+                start: "top 90%",
+                end: "top 60%",
+                scrub: 1
+              }
             }
-          });
+          );
         });
 
         // 3D Camera Dive
-        gsap.to(camera.position, {
-          z: 10,
-          y: 5,
-          scrollTrigger: {
-            trigger: "body",
-            start: "top top",
-            end: "bottom bottom",
-            scrub: true
+        ScrollTrigger.create({
+          trigger: "body",
+          start: "top top",
+          end: "bottom bottom",
+          scrub: true,
+          onUpdate: (self) => {
+            const progress = self.progress;
+            camera.position.z = 40 - (progress * 30);
+            camera.position.y = 12 - (progress * 7);
           }
         });
 
@@ -163,12 +194,15 @@ const App = () => {
         };
         window.addEventListener('resize', handleResize);
 
-        // Cleanup Closure
-        window._cleanupApp = () => {
+        // Cleanup
+        return () => {
           window.removeEventListener('resize', handleResize);
           cancelAnimationFrame(animationFrameId);
           lenis.destroy();
           ScrollTrigger.getAll().forEach(t => t.kill());
+          if (canvasRef.current) {
+            canvasRef.current.innerHTML = '';
+          }
         };
 
       } catch (err) {
@@ -176,10 +210,10 @@ const App = () => {
       }
     };
 
-    initApp();
+    const cleanup = initApp();
 
     return () => {
-      if (window._cleanupApp) window._cleanupApp();
+      if (cleanup) cleanup();
     };
   }, []);
 
@@ -194,7 +228,7 @@ const App = () => {
         }
 
         .font-sync { font-family: 'Syncopate', sans-serif; }
-        body { font-family: 'Inter', sans-serif; background-color: #050505; }
+        body { font-family: 'Inter', sans-serif; background-color: #050505; margin: 0; padding: 0; overflow-x: hidden; }
 
         #canvas-container {
           position: fixed;
@@ -210,6 +244,8 @@ const App = () => {
           position: fixed;
           top: 0;
           left: 0;
+          width: 100%;
+          height: 100%;
           z-index: -1;
           pointer-events: none;
         }
@@ -274,12 +310,21 @@ const App = () => {
           display: inline-block;
           transform: translateY(100%);
         }
+
+        a {
+          text-decoration: none;
+          color: inherit;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
       `}</style>
 
       <div id="canvas-container" ref={canvasRef}></div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 w-full p-6 md:p-10 flex justify-between items-center z-50">
+      <nav className="fixed top-0 w-full p-6 md:p-10 flex justify-between items-center z-50" style={{ mixBlendMode: 'difference' }}>
         <div className="font-sync text-xl tracking-tighter neon-glow">ELLEN_DEV</div>
         <div className="hidden md:flex space-x-12 text-[10px] uppercase tracking-[0.3em] font-bold opacity-50">
           <a href="#work" className="hover:opacity-100 transition-opacity">Artifacts</a>
@@ -300,7 +345,7 @@ const App = () => {
           </h1>
           
           <div className="max-w-xl mx-auto font-sync text-xs md:text-sm tracking-widest uppercase flex justify-center items-center gap-3 h-6" id="hero-sub">
-            <span className="opacity-40">18 &bull;</span>
+            <span className="opacity-40">18 •</span>
             <div className="carousel-container min-w-[200px] text-left">
               <div className="carousel-word" data-word="STUDENT"></div>
               <div className="carousel-word" data-word="PROGRAMMER"></div>
