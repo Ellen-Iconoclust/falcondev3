@@ -1,5 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from '@studio-freight/lenis';
 
 const App = () => {
   const canvasRef = useRef(null);
@@ -7,28 +10,8 @@ const App = () => {
   const marqueeRef = useRef(null);
 
   useEffect(() => {
-    // Helper to load external scripts as the environment handles CDN links better
-    const loadScript = (url) => {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = url;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    };
-
     const initApp = async () => {
       try {
-        // Load dependencies from CDN
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js');
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js');
-        await loadScript('https://unpkg.com/@studio-freight/lenis@1.0.34/dist/lenis.min.js');
-
-        const gsap = window.gsap;
-        const ScrollTrigger = window.ScrollTrigger;
-        const Lenis = window.Lenis;
-
         gsap.registerPlugin(ScrollTrigger);
 
         // --- LENIS SMOOTH SCROLL ---
@@ -189,7 +172,7 @@ const App = () => {
         };
 
       } catch (err) {
-        console.error("Failed to load scripts or initialize App", err);
+        console.error("Failed to initialize App", err);
       }
     };
 
