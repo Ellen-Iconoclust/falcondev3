@@ -213,6 +213,16 @@ const App = () => {
         .font-sync { font-family: 'Syncopate', sans-serif; }
         body { font-family: 'Inter', sans-serif; background-color: #050505; }
 
+        #canvas-container {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: -1;
+          pointer-events: none;
+        }
+
         #canvas-container canvas {
           position: fixed;
           top: 0;
@@ -416,7 +426,7 @@ const App = () => {
           </div>
         </div>
         <div className="mt-20 pt-10 border-t border-white/5 flex justify-between text-[8px] uppercase tracking-[0.3em] opacity-30">
-          <span>© 2026 Ellen Studio</span>
+          <span>© 2024 Ellen Studio</span>
           <span>Design for the new era</span>
         </div>
       </footer>
@@ -424,4 +434,4 @@ const App = () => {
   );
 };
 
-export default App; This is my website code, and I want other files to put it in a github repo and host it in vercel
+export default App;
