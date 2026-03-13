@@ -448,9 +448,9 @@ const App = () => {
           <span className="text-[10px] tracking-[0.5em] uppercase opacity-40 mb-6 block">Ready to collaborate?</span>
           <h2 className="font-sync text-4xl md:text-8xl hover:text-cyan-400 transition-colors cursor-pointer mb-10">HIRE_ELLEN</h2>
           <div className="flex justify-center space-x-8 text-[10px] tracking-widest uppercase opacity-50">
-            <a href="#" className="hover:opacity-100">LinkedIn</a>
-            <a href="#" className="hover:opacity-100">GitHub</a>
-            <a href="#" className="hover:opacity-100">Twitter</a>
+            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-100">LinkedIn</a>
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-100">GitHub</a>
+            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-100">Twitter</a>
           </div>
         </div>
         <div className="mt-20 pt-10 border-t border-white/5 flex justify-between text-[8px] uppercase tracking-[0.3em] opacity-30">
