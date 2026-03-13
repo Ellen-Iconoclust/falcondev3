@@ -1,11 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Lenis from '@studio-freight/lenis';
-
-// Register ScrollTrigger with GSAP
-gsap.registerPlugin(ScrollTrigger);
 
 const App = () => {
   const canvasRef = useRef(null);
@@ -13,25 +7,39 @@ const App = () => {
   const marqueeRef = useRef(null);
 
   useEffect(() => {
-    const initApp = () => {
-      try {
-        // --- LENIS SMOOTH SCROLL ---
-        const lenis = new Lenis({
-          duration: 1.2,
-          easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-          orientation: 'vertical',
-          smoothWheel: true,
-        });
+    // Helper to load external scripts as the environment handles CDN links better
+    const loadScript = (url) => {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
 
+    const initApp = async () => {
+      try {
+        // Load dependencies from CDN
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js');
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js');
+        await loadScript('https://unpkg.com/@studio-freight/lenis@1.0.34/dist/lenis.min.js');
+
+        const gsap = window.gsap;
+        const ScrollTrigger = window.ScrollTrigger;
+        const Lenis = window.Lenis;
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        // --- LENIS SMOOTH SCROLL ---
+        const lenis = new Lenis();
+        lenis.on('scroll', ScrollTrigger.update);
+        
         function raf(time) {
           lenis.raf(time);
           requestAnimationFrame(raf);
         }
         requestAnimationFrame(raf);
-
-        lenis.on('scroll', () => {
-          ScrollTrigger.update();
-        });
 
         // --- THREE.JS SCENE ---
         const scene = new THREE.Scene();
@@ -39,10 +47,7 @@ const App = () => {
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        if (canvasRef.current) {
-          canvasRef.current.innerHTML = ''; // Clear any existing canvas
-          canvasRef.current.appendChild(renderer.domElement);
-        }
+        if (canvasRef.current) canvasRef.current.appendChild(renderer.domElement);
 
         const geometry = new THREE.PlaneGeometry(120, 120, 100, 100);
         const material = new THREE.MeshBasicMaterial({
@@ -74,52 +79,42 @@ const App = () => {
         // Hero Entrance
         if (heroTitleRef.current) {
           const titleText = heroTitleRef.current.innerText;
-          heroTitleRef.current.innerHTML = titleText.split('').map(char => `<span style="display: inline-block; transform: translateY(110%);">${char}</span>`).join('');
+          heroTitleRef.current.innerHTML = titleText.split('').map(char => `<span>${char}</span>`).join('');
         }
 
         const tl = gsap.timeline();
         tl.to('#hero-top', { opacity: 1, duration: 1 })
           .to('#hero-title span', { y: 0, stagger: 0.1, duration: 1.5, ease: "expo.out" }, "-=0.5")
           .from('#hero-sub', { opacity: 0, y: 10, duration: 1 }, "-=1")
-          .from('#scroll-line', { scaleY: 0, duration: 1, transformOrigin: "top" }, "-=0.5");
+          .from('#scroll-line', { scaleY: 0, duration: 1 }, "-=0.5");
 
         // Carousel Logic
         const words = document.querySelectorAll('.carousel-word');
-        if (words.length > 0) {
-          words.forEach(word => {
-            const text = word.getAttribute('data-word');
-            word.innerHTML = text.split('').map(char => `<span class="char" style="display: inline-block; transform: translateY(100%);">${char === ' ' ? '&nbsp;' : char}</span>`).join('');
-          });
+        words.forEach(word => {
+          const text = word.getAttribute('data-word');
+          word.innerHTML = text.split('').map(char => `<span class="char">${char === ' ' ? '&nbsp;' : char}</span>`).join('');
+        });
 
-          const carouselTl = gsap.timeline({ repeat: -1, repeatDelay: 0.5 });
-          
-          words.forEach((word, index) => {
-            const chars = word.querySelectorAll('.char');
-            
-            if (index === 0) {
-              carouselTl.set(word, { opacity: 1 });
-            } else {
-              carouselTl.set(word, { opacity: 0 });
-            }
-            
-            carouselTl
-              .to(chars, {
-                y: '0%',
-                stagger: 0.05,
-                duration: 0.8,
-                ease: "expo.out"
-              })
-              .to(chars, {
-                y: '-100%',
-                stagger: 0.03,
-                duration: 0.6,
-                ease: "expo.in",
-                delay: 1.5
-              })
-              .set(word, { opacity: 0 })
-              .set(word === words[words.length - 1] ? words[0] : words[index + 1], { opacity: 1 }, "+=0.1");
-          });
-        }
+        const carouselTl = gsap.timeline({ repeat: -1 });
+        words.forEach((word) => {
+          const chars = word.querySelectorAll('.char');
+          carouselTl
+            .set(word, { opacity: 1 })
+            .to(chars, {
+              y: '0%',
+              stagger: 0.05,
+              duration: 0.8,
+              ease: "expo.out"
+            })
+            .to(chars, {
+              y: '-100%',
+              stagger: 0.03,
+              duration: 0.6,
+              ease: "expo.in",
+              delay: 1.5
+            })
+            .set(word, { opacity: 0 });
+        });
 
         // Marquee
         if (marqueeRef.current) {
@@ -136,53 +131,44 @@ const App = () => {
         }
 
         // Project Reveals
-        const projectItems = gsap.utils.toArray('.project-item');
-        projectItems.forEach(item => {
+        gsap.utils.toArray('.project-item').forEach(item => {
           const overlay = item.querySelector('.reveal-overlay');
-          if (overlay) {
-            ScrollTrigger.create({
-              trigger: item,
-              start: "top 80%",
-              once: true,
-              onEnter: () => {
-                gsap.timeline()
-                  .to(overlay, { scaleX: 1, duration: 0.5, ease: "power2.inOut" })
-                  .set(overlay, { transformOrigin: "right" })
-                  .to(overlay, { scaleX: 0, duration: 0.5, ease: "power2.inOut" });
-              }
-            });
-          }
+          ScrollTrigger.create({
+            trigger: item,
+            start: "top 80%",
+            onEnter: () => {
+              gsap.timeline()
+                .to(overlay, { scaleX: 1, duration: 0.5, ease: "power2.inOut" })
+                .set(overlay, { transformOrigin: "right" })
+                .to(overlay, { scaleX: 0, duration: 0.5, ease: "power2.inOut" });
+            }
+          });
         });
 
         // Skills Parallax
-        const cards = gsap.utils.toArray('.feature-card-alt');
-        cards.forEach((card) => {
-          gsap.fromTo(card, 
-            { x: 100, opacity: 0 },
-            {
-              x: 0,
-              opacity: 1,
-              duration: 1,
-              scrollTrigger: {
-                trigger: card,
-                start: "top 90%",
-                end: "top 60%",
-                scrub: 1
-              }
+        gsap.utils.toArray('.feature-card-alt').forEach((card) => {
+          gsap.from(card, {
+            x: 100,
+            opacity: 0,
+            duration: 1,
+            scrollTrigger: {
+              trigger: card,
+              start: "top 90%",
+              scrub: 1,
+              end: "top 60%"
             }
-          );
+          });
         });
 
         // 3D Camera Dive
-        ScrollTrigger.create({
-          trigger: "body",
-          start: "top top",
-          end: "bottom bottom",
-          scrub: true,
-          onUpdate: (self) => {
-            const progress = self.progress;
-            camera.position.z = 40 - (progress * 30);
-            camera.position.y = 12 - (progress * 7);
+        gsap.to(camera.position, {
+          z: 10,
+          y: 5,
+          scrollTrigger: {
+            trigger: "body",
+            start: "top top",
+            end: "bottom bottom",
+            scrub: true
           }
         });
 
@@ -194,26 +180,23 @@ const App = () => {
         };
         window.addEventListener('resize', handleResize);
 
-        // Cleanup
-        return () => {
+        // Cleanup Closure
+        window._cleanupApp = () => {
           window.removeEventListener('resize', handleResize);
           cancelAnimationFrame(animationFrameId);
           lenis.destroy();
           ScrollTrigger.getAll().forEach(t => t.kill());
-          if (canvasRef.current) {
-            canvasRef.current.innerHTML = '';
-          }
         };
 
       } catch (err) {
-        console.error("Failed to initialize App", err);
+        console.error("Failed to load scripts or initialize App", err);
       }
     };
 
-    const cleanup = initApp();
+    initApp();
 
     return () => {
-      if (cleanup) cleanup();
+      if (window._cleanupApp) window._cleanupApp();
     };
   }, []);
 
@@ -228,24 +211,12 @@ const App = () => {
         }
 
         .font-sync { font-family: 'Syncopate', sans-serif; }
-        body { font-family: 'Inter', sans-serif; background-color: #050505; margin: 0; padding: 0; overflow-x: hidden; }
-
-        #canvas-container {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          z-index: -1;
-          pointer-events: none;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #050505; }
 
         #canvas-container canvas {
           position: fixed;
           top: 0;
           left: 0;
-          width: 100%;
-          height: 100%;
           z-index: -1;
           pointer-events: none;
         }
@@ -310,21 +281,12 @@ const App = () => {
           display: inline-block;
           transform: translateY(100%);
         }
-
-        a {
-          text-decoration: none;
-          color: inherit;
-        }
-
-        * {
-          box-sizing: border-box;
-        }
       `}</style>
 
       <div id="canvas-container" ref={canvasRef}></div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 w-full p-6 md:p-10 flex justify-between items-center z-50" style={{ mixBlendMode: 'difference' }}>
+      <nav className="fixed top-0 w-full p-6 md:p-10 flex justify-between items-center z-50">
         <div className="font-sync text-xl tracking-tighter neon-glow">ELLEN_DEV</div>
         <div className="hidden md:flex space-x-12 text-[10px] uppercase tracking-[0.3em] font-bold opacity-50">
           <a href="#work" className="hover:opacity-100 transition-opacity">Artifacts</a>
@@ -345,7 +307,7 @@ const App = () => {
           </h1>
           
           <div className="max-w-xl mx-auto font-sync text-xs md:text-sm tracking-widest uppercase flex justify-center items-center gap-3 h-6" id="hero-sub">
-            <span className="opacity-40">18 •</span>
+            <span className="opacity-40">18 &bull;</span>
             <div className="carousel-container min-w-[200px] text-left">
               <div className="carousel-word" data-word="STUDENT"></div>
               <div className="carousel-word" data-word="PROGRAMMER"></div>
@@ -448,6 +410,7 @@ const App = () => {
           <span className="text-[10px] tracking-[0.5em] uppercase opacity-40 mb-6 block">Ready to collaborate?</span>
           <h2 className="font-sync text-4xl md:text-8xl hover:text-cyan-400 transition-colors cursor-pointer mb-10">HIRE_ELLEN</h2>
           <div className="flex justify-center space-x-8 text-[10px] tracking-widest uppercase opacity-50">
+            {/* FIXED: Added proper href values instead of # */}
             <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-100">LinkedIn</a>
             <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-100">GitHub</a>
             <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-100">Twitter</a>
